@@ -6,7 +6,6 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.foundation.isSystemInDarkTheme
 
 private val LightColors = lightColorScheme(
     primary = FontDropPalette.Ink900,
@@ -62,9 +61,14 @@ object FontDropTheme {
     val type @Composable get() = LocalFontDropTypography.current
 }
 
+// Dark mode is intentionally disabled for MVP: many call sites still hardcode
+// light-mode ink colors, which collide with the dark palette (editor was
+// rendering dark-ink text on the dark-green background). Re-enable once every
+// surface uses MaterialTheme.colorScheme tokens instead of FontDropPalette
+// directly, and the dark scheme is visually tuned per design spec §16.
 @Composable
 fun FontDropTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val scheme = if (darkTheme) DarkColors else LightColors

@@ -19,9 +19,12 @@ object FontDropPalette {
     val Clay500 = Color(0xFFB3825F)
     val Clay700 = Color(0xFF875D40)
 
+    // Semantic text tokens: shifted one step deeper than the original spec so
+    // every role meets WCAG AA on warm paper surfaces. Brand values still come
+    // from the Ink scale above (Primary=Ink900, Secondary=Ink700, Tertiary=Ink500).
     val TextPrimary = Color(0xFF173C34)
-    val TextSecondary = Color(0xFF4E786C)
-    val TextTertiary = Color(0xFF7A8F89)
+    val TextSecondary = Color(0xFF2D5A4E)
+    val TextTertiary = Color(0xFF4E786C)
     val TextInverse = Color(0xFFFFF9F0)
 
     val BackgroundBase = Color(0xFFFFF9F0)
