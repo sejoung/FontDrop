@@ -164,6 +164,26 @@ Semantic text tokens (`TextSecondary`, `TextTertiary`) were shifted one Ink step
 - [ ] Cloud sync
 - [ ] iOS
 
+## Releasing
+
+Use the bundled helper script — it bumps `versionCode` / `versionName` in `app/build.gradle.kts`, creates the commit and annotated tag, and pushes everything so that the [release workflow](.github/workflows/release.yml) can pick it up.
+
+```bash
+./scripts/release.sh patch             # 0.1.0 → 0.1.1
+./scripts/release.sh minor             # 0.1.3 → 0.2.0
+./scripts/release.sh major             # 0.4.2 → 1.0.0
+./scripts/release.sh 0.2.0-beta.1      # explicit semver (incl. prereleases)
+./scripts/release.sh patch --no-push   # stage the commit + tag locally, push manually
+```
+
+`patch` / `minor` / `major` read the current `versionName` from `app/build.gradle.kts` and produce a stable version — prerelease suffixes (`-beta.1`, `-rc.2`…) are only available through an explicit argument.
+
+The script refuses to run if the working tree is dirty, if you're not on `main`, or if the tag already exists locally or on the remote. `versionCode` is derived from the number of existing `v*` tags so it increases monotonically.
+
+Once the tag lands on GitHub, the workflow builds the debug APK, publishes it as a GitHub Release asset, and auto-generates release notes from the commits since the previous tag. Tags containing `alpha` / `beta` / `rc` / `dev` / `preview` are flagged as prereleases.
+
+The workflow currently ships a **debug-signed** APK — good for side-loading and internal testing, not for Play Store. Production signing will require adding a release keystore via GitHub Actions secrets (`RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`) and a `signingConfigs.release { ... }` block in `app/build.gradle.kts`.
+
 ## Contributing
 
 PRs welcome. If you're adding a feature, please also:
