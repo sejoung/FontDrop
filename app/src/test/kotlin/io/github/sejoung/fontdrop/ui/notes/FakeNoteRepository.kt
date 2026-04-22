@@ -27,11 +27,11 @@ class FakeNoteRepository(
     override fun observeNote(id: Long): Flow<Note?> =
         notes.map { list -> list.firstOrNull { it.id == id } }
 
-    override suspend fun createEmptyNote(): Long {
+    override suspend fun createEmptyNote(fontId: String?): Long {
         val id = nextId++
         createdNoteId = id
         notes.update { current ->
-            current + Note(id = id, title = "", content = "")
+            current + Note(id = id, title = "", content = "", fontId = fontId)
         }
         return id
     }

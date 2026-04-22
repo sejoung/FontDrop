@@ -256,7 +256,10 @@ private class FakeFontFolderRepository(
 ) : FontFolderRepository {
     private val folder = MutableStateFlow<String?>(null)
     override val selectedFolderUri: Flow<String?> = folder
+    private val default = MutableStateFlow<String?>(null)
+    override val defaultFontId: Flow<String?> = default
     override suspend fun setSelectedFolder(uriString: String) { folder.value = uriString }
     override suspend fun clearSelectedFolder() { folder.value = null }
+    override suspend fun setDefaultFontId(id: String?) { default.value = id }
     override suspend fun scan(): List<FontAsset> = fonts
 }

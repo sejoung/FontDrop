@@ -7,7 +7,7 @@ interface NoteRepository {
 
     fun observeNote(id: Long): Flow<Note?>
 
-    suspend fun createEmptyNote(): Long
+    suspend fun createEmptyNote(fontId: String? = null): Long
 
     suspend fun saveNote(note: Note): Long
 

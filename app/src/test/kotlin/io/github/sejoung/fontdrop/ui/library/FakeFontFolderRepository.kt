@@ -6,10 +6,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 class FakeFontFolderRepository(
     initialFolderUri: String? = null,
+    initialDefaultFontId: String? = null,
 ) : FontFolderRepository {
 
     private val folderUri = MutableStateFlow(initialFolderUri)
     override val selectedFolderUri = folderUri
+
+    private val defaultFont = MutableStateFlow(initialDefaultFontId)
+    override val defaultFontId = defaultFont
 
     var scanResult: Result<List<FontAsset>> = Result.success(emptyList())
     var scanCount: Int = 0
@@ -21,6 +25,10 @@ class FakeFontFolderRepository(
 
     override suspend fun clearSelectedFolder() {
         folderUri.value = null
+    }
+
+    override suspend fun setDefaultFontId(id: String?) {
+        defaultFont.value = id
     }
 
     override suspend fun scan(): List<FontAsset> {

@@ -16,12 +16,18 @@ class FontFolderRepositoryImpl(
 
     override val selectedFolderUri: Flow<String?> = preferences.folderUri
 
+    override val defaultFontId: Flow<String?> = preferences.defaultFontId
+
     override suspend fun setSelectedFolder(uriString: String) {
         preferences.setFolderUri(uriString)
     }
 
     override suspend fun clearSelectedFolder() {
         preferences.setFolderUri(null)
+    }
+
+    override suspend fun setDefaultFontId(id: String?) {
+        preferences.setDefaultFontId(id)
     }
 
     override suspend fun scan(): List<FontAsset> {

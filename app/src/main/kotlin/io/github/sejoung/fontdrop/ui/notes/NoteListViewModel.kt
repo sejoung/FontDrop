@@ -14,6 +14,7 @@ import io.github.sejoung.fontdrop.util.Clock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.ZoneId
@@ -51,7 +52,8 @@ class NoteListViewModel(
 
     fun onCreateNote() {
         viewModelScope.launch {
-            val id = repository.createEmptyNote()
+            val defaultFontId = fontRepository.defaultFontId.first()
+            val id = repository.createEmptyNote(fontId = defaultFontId)
             _newNoteEvents.value = id
         }
     }

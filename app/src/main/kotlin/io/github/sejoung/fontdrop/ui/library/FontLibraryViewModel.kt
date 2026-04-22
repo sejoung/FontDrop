@@ -28,6 +28,11 @@ class FontLibraryViewModel(
             _uiState.update { it.copy(hasSelectedFolder = uri != null, folderUri = uri) }
             if (uri != null) refresh()
         }
+        viewModelScope.launch {
+            repository.defaultFontId.collect { id ->
+                _uiState.update { it.copy(selectedFontId = id) }
+            }
+        }
     }
 
     fun onFolderSelected(uriString: String) {
@@ -37,7 +42,6 @@ class FontLibraryViewModel(
                 it.copy(
                     hasSelectedFolder = true,
                     folderUri = uriString,
-                    selectedFontId = null,
                     errorMessage = null,
                 )
             }
@@ -50,16 +54,18 @@ class FontLibraryViewModel(
     }
 
     fun onFontTapped(asset: FontAsset) {
-        _uiState.update { current ->
-            val next = if (current.selectedFontId == asset.id) null else asset.id
-            current.copy(selectedFontId = next)
+        viewModelScope.launch {
+            val current = repository.defaultFontId.first()
+            val next = if (current == asset.id) null else asset.id
+            repository.setDefaultFontId(next)
+            if (next != null) prewarmer.ensureLoaded(asset)
         }
-        viewModelScope.launch { prewarmer.ensureLoaded(asset) }
     }
 
     fun onClearFolder() {
         viewModelScope.launch {
             repository.clearSelectedFolder()
+            repository.setDefaultFontId(null)
             _uiState.update { FontLibraryUiState() }
         }
     }
@@ -85,8 +91,11 @@ class FontLibraryViewModel(
                 },
             )
         }
-        result.getOrNull()?.let { fonts ->
-            viewModelScope.launch { prewarmer.prewarm(fonts) }
+        val fonts = result.getOrNull() ?: return
+        viewModelScope.launch { prewarmer.prewarm(fonts) }
+        val persistedDefault = repository.defaultFontId.first()
+        if (persistedDefault != null && fonts.none { it.id == persistedDefault }) {
+            repository.setDefaultFontId(null)
         }
     }
 

@@ -15,14 +15,14 @@ class NoteRepositoryImpl(
     override fun observeNote(id: Long): Flow<Note?> =
         dao.observeById(id).map { it?.toDomain() }
 
-    override suspend fun createEmptyNote(): Long {
+    override suspend fun createEmptyNote(fontId: String?): Long {
         val now = clock.nowMillis()
         return dao.upsert(
             NoteEntity(
                 id = 0L,
                 title = "",
                 content = "",
-                fontId = null,
+                fontId = fontId,
                 fontSizeSp = Note.DEFAULT_FONT_SIZE_SP,
                 lineHeightMultiplier = Note.DEFAULT_LINE_HEIGHT_MULTIPLIER,
                 createdAt = now,

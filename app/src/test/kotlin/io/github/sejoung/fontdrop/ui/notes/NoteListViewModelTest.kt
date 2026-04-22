@@ -141,6 +141,35 @@ class NoteListViewModelTest {
     }
 
     @Test
+    fun `onCreateNote seeds the new note with the persisted default font`() = runTest {
+        val inter = asset("inter")
+        val repo = FakeNoteRepository()
+        val fontRepo = StubFontFolderRepository(fonts = listOf(inter), defaultFontId = "inter")
+        val vm = NoteListViewModel(
+            repository = repo,
+            fontRepository = fontRepo,
+            prewarmer = FakeFontPrewarmer(),
+            clock = FakeClock(100L),
+            zone = ZoneOffset.UTC,
+        )
+
+        vm.onCreateNote()
+
+        val created = repo.noteById(repo.createdNoteId)
+        assertEquals("inter", created?.fontId)
+    }
+
+    @Test
+    fun `onCreateNote leaves fontId null when no default is set`() = runTest {
+        val repo = FakeNoteRepository()
+        val vm = buildViewModel(repo)
+
+        vm.onCreateNote()
+
+        assertNull(repo.noteById(repo.createdNoteId)?.fontId)
+    }
+
+    @Test
     fun `init prewarms the font cache so cards render with the right family immediately`() = runTest {
         val inter = asset("inter")
         val roboto = asset("roboto")
@@ -178,10 +207,16 @@ class NoteListViewModelTest {
         LocalDateTime.of(year, month, day, hour, minute).toInstant(ZoneOffset.UTC).toEpochMilli()
 }
 
-private class StubFontFolderRepository(private val fonts: List<FontAsset>) : FontFolderRepository {
+private class StubFontFolderRepository(
+    private val fonts: List<FontAsset>,
+    defaultFontId: String? = null,
+) : FontFolderRepository {
     private val folder = MutableStateFlow<String?>(null)
     override val selectedFolderUri: Flow<String?> = folder
+    private val default = MutableStateFlow(defaultFontId)
+    override val defaultFontId: Flow<String?> = default
     override suspend fun setSelectedFolder(uriString: String) { folder.value = uriString }
     override suspend fun clearSelectedFolder() { folder.value = null }
+    override suspend fun setDefaultFontId(id: String?) { default.value = id }
     override suspend fun scan(): List<FontAsset> = fonts
 }

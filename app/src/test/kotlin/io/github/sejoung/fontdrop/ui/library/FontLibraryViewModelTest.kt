@@ -87,7 +87,7 @@ class FontLibraryViewModelTest {
     }
 
     @Test
-    fun `onFontTapped toggles selection on and off`() = runTest {
+    fun `onFontTapped toggles selection on and off and persists it`() = runTest {
         val repo = FakeFontFolderRepository(initialFolderUri = "content://tree/fonts")
         val inter = asset("Inter")
         repo.scanResult = Result.success(listOf(inter, asset("Roboto")))
@@ -95,9 +95,24 @@ class FontLibraryViewModelTest {
 
         vm.onFontTapped(inter)
         assertEquals("Inter", vm.uiState.value.selectedFontId)
+        assertEquals("Inter", repo.defaultFontId.value)
 
         vm.onFontTapped(inter)
         assertNull(vm.uiState.value.selectedFontId)
+        assertNull(repo.defaultFontId.value)
+    }
+
+    @Test
+    fun `persisted default font id seeds state on construction`() = runTest {
+        val repo = FakeFontFolderRepository(
+            initialFolderUri = "content://tree/fonts",
+            initialDefaultFontId = "Inter",
+        )
+        repo.scanResult = Result.success(listOf(asset("Inter")))
+
+        val vm = FontLibraryViewModel(repo, FakeFontPrewarmer())
+
+        assertEquals("Inter", vm.uiState.value.selectedFontId)
     }
 
     @Test

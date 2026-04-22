@@ -40,6 +40,14 @@ class NoteRepositoryTest {
     }
 
     @Test
+    fun `createEmptyNote honors the provided default font id`() = runTest {
+        val id = repository.createEmptyNote(fontId = "default-inter")
+
+        val stored = dao.snapshot().single { it.id == id }
+        assertEquals("default-inter", stored.fontId)
+    }
+
+    @Test
     fun `saveNote updates updatedAt but keeps original createdAt`() = runTest {
         val id = repository.createEmptyNote()
         val original = repository.observeNote(id).first()!!
