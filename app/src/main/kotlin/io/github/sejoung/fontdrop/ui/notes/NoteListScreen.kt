@@ -22,11 +22,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.sejoung.fontdrop.FontDropApplication
+import io.github.sejoung.fontdrop.data.font.FontFamilyCache
 import io.github.sejoung.fontdrop.ui.components.EmptyState
 import io.github.sejoung.fontdrop.ui.components.FontDropTopBar
 import io.github.sejoung.fontdrop.ui.components.NoteCard
+import io.github.sejoung.fontdrop.ui.library.rememberFontFamily
 import io.github.sejoung.fontdrop.ui.theme.FontDropPalette
 import io.github.sejoung.fontdrop.ui.theme.FontDropTheme
 import io.github.sejoung.fontdrop.util.SystemClock
@@ -34,13 +37,19 @@ import io.github.sejoung.fontdrop.util.SystemClock
 @Composable
 fun NoteListScreen(
     onOpenNote: (Long) -> Unit,
-    viewModel: NoteListViewModel = viewModel(
-        factory = NoteListViewModel.factory(
-            repository = (LocalContext.current.applicationContext as FontDropApplication)
-                .container.noteRepository,
-            clock = SystemClock,
+    viewModel: NoteListViewModel = run {
+        val app = LocalContext.current.applicationContext as FontDropApplication
+        viewModel(
+            factory = NoteListViewModel.factory(
+                repository = app.container.noteRepository,
+                fontRepository = app.container.fontFolderRepository,
+                prewarmer = app.container.fontFamilyCache,
+                clock = SystemClock,
+            )
         )
-    ),
+    },
+    fontFamilyCache: FontFamilyCache = (LocalContext.current.applicationContext as FontDropApplication)
+        .container.fontFamilyCache,
 ) {
     val state by viewModel.uiState.collectAsState()
     val newNoteId by viewModel.newNoteEvents.collectAsState()
@@ -53,6 +62,7 @@ fun NoteListScreen(
 
     NoteListScreenContent(
         state = state,
+        fontFamilyCache = fontFamilyCache,
         onCreateNote = viewModel::onCreateNote,
         onOpenNote = onOpenNote,
     )
@@ -61,6 +71,7 @@ fun NoteListScreen(
 @Composable
 internal fun NoteListScreenContent(
     state: NoteListUiState,
+    fontFamilyCache: FontFamilyCache,
     onCreateNote: () -> Unit,
     onOpenNote: (Long) -> Unit,
 ) {
@@ -96,10 +107,15 @@ internal fun NoteListScreenContent(
                     verticalArrangement = Arrangement.spacedBy(FontDropTheme.spacing.sm),
                 ) {
                     items(state.items, key = { it.id }) { item ->
+                        val fontFamily = item.fontAsset?.let { asset ->
+                            val family by rememberFontFamily(asset = asset, cache = fontFamilyCache)
+                            family
+                        } ?: FontFamily.Default
                         NoteCard(
                             title = item.title,
                             snippet = item.snippet,
                             editedLabel = item.editedLabel,
+                            fontFamily = fontFamily,
                             onClick = { onOpenNote(item.id) },
                         )
                     }

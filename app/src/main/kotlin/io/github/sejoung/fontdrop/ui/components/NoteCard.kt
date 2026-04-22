@@ -12,6 +12,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.sejoung.fontdrop.ui.theme.FontDropPalette
@@ -23,6 +24,7 @@ fun NoteCard(
     snippet: String,
     editedLabel: String,
     modifier: Modifier = Modifier,
+    fontFamily: FontFamily = FontFamily.Default,
     onClick: () -> Unit = {},
 ) {
     Card(
@@ -42,14 +44,14 @@ fun NoteCard(
         ) {
             Text(
                 text = title,
-                style = FontDropTheme.type.headingS,
+                style = FontDropTheme.type.headingS.copy(fontFamily = fontFamily),
                 color = FontDropPalette.TextPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = snippet,
-                style = FontDropTheme.type.bodyM,
+                style = FontDropTheme.type.bodyM.copy(fontFamily = fontFamily),
                 color = FontDropPalette.TextSecondary,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
