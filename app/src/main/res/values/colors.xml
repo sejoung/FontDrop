@@ -1,16 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ink_900">#173C34</color>
-    <color name="ink_700">#2D5A4E</color>
-    <color name="ink_500">#4E786C</color>
-
+    <!-- Brand palette lives in Kotlin (ui/theme/Color.kt). Only colors that
+         need to be referenced from XML (window decor in themes.xml) live here. -->
     <color name="paper_50">#FFF9F0</color>
-    <color name="paper_100">#F8EEDF</color>
-    <color name="paper_200">#EEDBC0</color>
-
-    <color name="gold_400">#E4AE59</color>
-    <color name="gold_500">#D89C3F</color>
-    <color name="gold_600">#BB7E2E</color>
-
-    <color name="dark_base">#14211E</color>
 </resources>

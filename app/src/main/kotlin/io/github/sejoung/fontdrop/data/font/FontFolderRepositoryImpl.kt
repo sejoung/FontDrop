@@ -2,6 +2,7 @@ package io.github.sejoung.fontdrop.data.font
 
 import android.content.Context
 import android.net.Uri
+import androidx.core.net.toUri
 import io.github.sejoung.fontdrop.data.prefs.FontFolderPreferences
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -32,7 +33,7 @@ class FontFolderRepositoryImpl(
 
     override suspend fun scan(): List<FontAsset> {
         val uriString = preferences.folderUri.first() ?: return emptyList()
-        val source = sourceFactory(Uri.parse(uriString))
+        val source = sourceFactory(uriString.toUri())
         return FontScanner.scan(source.listFontFiles())
     }
 }

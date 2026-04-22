@@ -43,6 +43,13 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+    lint {
+        // Freezes the known set of warnings (mostly "newer dependency available"
+        // for deliberately pinned versions — see README). CI fails only on NEW
+        // issues, not the existing baseline. Regenerate with:
+        //   ./gradlew :app:updateLintBaseline
+        baseline = file("lint-baseline.xml")
+    }
   buildToolsVersion = "36.1.0"
 }
 

@@ -10,6 +10,7 @@
 </p>
 
 <p align="center">
+  <a href="../../actions/workflows/ci.yml"><img alt="CI" src="../../actions/workflows/ci.yml/badge.svg" /></a>
   <a href="#license"><img alt="license" src="https://img.shields.io/badge/license-Apache%202.0-173C34" /></a>
   <img alt="platform" src="https://img.shields.io/badge/platform-Android%2026%2B-4E786C" />
   <img alt="kotlin" src="https://img.shields.io/badge/Kotlin-2.1.0-2D5A4E" />
