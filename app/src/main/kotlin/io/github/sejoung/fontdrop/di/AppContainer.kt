@@ -4,15 +4,21 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import androidx.room.Room
 import io.github.sejoung.fontdrop.data.font.AndroidFontContentReader
 import io.github.sejoung.fontdrop.data.font.FontFileMaterializer
 import io.github.sejoung.fontdrop.data.font.FontFolderRepository
 import io.github.sejoung.fontdrop.data.font.FontFolderRepositoryImpl
+import io.github.sejoung.fontdrop.data.note.FontDropDatabase
+import io.github.sejoung.fontdrop.data.note.NoteRepository
+import io.github.sejoung.fontdrop.data.note.NoteRepositoryImpl
 import io.github.sejoung.fontdrop.data.prefs.FontFolderPreferences
+import io.github.sejoung.fontdrop.util.SystemClock
 
 interface AppContainer {
     val fontFolderRepository: FontFolderRepository
     val fontFileMaterializer: FontFileMaterializer
+    val noteRepository: NoteRepository
 }
 
 private val Context.fontDropDataStore: DataStore<Preferences> by preferencesDataStore(name = "fontdrop_prefs")
@@ -22,6 +28,10 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
 
     private val fontFolderPreferences by lazy {
         FontFolderPreferences(appContext.fontDropDataStore)
+    }
+
+    private val database: FontDropDatabase by lazy {
+        Room.databaseBuilder(appContext, FontDropDatabase::class.java, "fontdrop.db").build()
     }
 
     override val fontFolderRepository: FontFolderRepository by lazy {
@@ -36,5 +46,9 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
             reader = AndroidFontContentReader(appContext),
             cacheDirProvider = { appContext.cacheDir },
         )
+    }
+
+    override val noteRepository: NoteRepository by lazy {
+        NoteRepositoryImpl(dao = database.noteDao(), clock = SystemClock)
     }
 }
