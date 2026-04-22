@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
 import io.github.sejoung.fontdrop.data.font.AndroidFontContentReader
+import io.github.sejoung.fontdrop.data.font.FontFamilyCache
 import io.github.sejoung.fontdrop.data.font.FontFileMaterializer
 import io.github.sejoung.fontdrop.data.font.FontFolderRepository
 import io.github.sejoung.fontdrop.data.font.FontFolderRepositoryImpl
@@ -17,7 +18,7 @@ import io.github.sejoung.fontdrop.util.SystemClock
 
 interface AppContainer {
     val fontFolderRepository: FontFolderRepository
-    val fontFileMaterializer: FontFileMaterializer
+    val fontFamilyCache: FontFamilyCache
     val noteRepository: NoteRepository
 }
 
@@ -41,10 +42,12 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
         )
     }
 
-    override val fontFileMaterializer: FontFileMaterializer by lazy {
-        FontFileMaterializer(
-            reader = AndroidFontContentReader(appContext),
-            cacheDirProvider = { appContext.cacheDir },
+    override val fontFamilyCache: FontFamilyCache by lazy {
+        FontFamilyCache(
+            materializer = FontFileMaterializer(
+                reader = AndroidFontContentReader(appContext),
+                cacheDirProvider = { appContext.cacheDir },
+            ),
         )
     }
 

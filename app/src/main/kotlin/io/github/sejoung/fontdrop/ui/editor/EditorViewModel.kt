@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.sejoung.fontdrop.data.font.FontFolderRepository
+import io.github.sejoung.fontdrop.data.font.FontPrewarmer
 import io.github.sejoung.fontdrop.data.note.Note
 import io.github.sejoung.fontdrop.data.note.NoteRepository
 import io.github.sejoung.fontdrop.util.Clock
@@ -22,6 +23,7 @@ class EditorViewModel(
     private val noteId: Long,
     private val noteRepository: NoteRepository,
     private val fontRepository: FontFolderRepository,
+    private val prewarmer: FontPrewarmer,
     private val clock: Clock = SystemClock,
     private val autoSaveDelayMs: Long = DEFAULT_AUTO_SAVE_DELAY_MS,
 ) : ViewModel() {
@@ -55,6 +57,11 @@ class EditorViewModel(
                     updatedAt = note.updatedAt,
                 )
             }
+            val selected = fonts.firstOrNull { it.id == note.fontId }
+            launch {
+                if (selected != null) prewarmer.ensureLoaded(selected)
+                prewarmer.prewarm(fonts)
+            }
         }
     }
 
@@ -74,6 +81,10 @@ class EditorViewModel(
 
     fun onFontSelected(fontId: String?) {
         _uiState.update { it.copy(fontId = fontId, showFontPicker = false) }
+        val asset = _uiState.value.availableFonts.firstOrNull { it.id == fontId }
+        if (asset != null) {
+            viewModelScope.launch { prewarmer.ensureLoaded(asset) }
+        }
         scheduleSave()
     }
 
@@ -136,11 +147,12 @@ class EditorViewModel(
             noteId: Long,
             noteRepository: NoteRepository,
             fontRepository: FontFolderRepository,
+            prewarmer: FontPrewarmer,
             clock: Clock = SystemClock,
             autoSaveDelayMs: Long = DEFAULT_AUTO_SAVE_DELAY_MS,
         ) = viewModelFactory {
             initializer {
-                EditorViewModel(noteId, noteRepository, fontRepository, clock, autoSaveDelayMs)
+                EditorViewModel(noteId, noteRepository, fontRepository, prewarmer, clock, autoSaveDelayMs)
             }
         }
     }

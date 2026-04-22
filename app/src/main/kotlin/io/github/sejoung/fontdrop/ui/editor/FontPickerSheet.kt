@@ -16,7 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import io.github.sejoung.fontdrop.data.font.FontAsset
-import io.github.sejoung.fontdrop.data.font.FontFileMaterializer
+import io.github.sejoung.fontdrop.data.font.FontFamilyCache
 import io.github.sejoung.fontdrop.ui.components.FontPreviewCard
 import io.github.sejoung.fontdrop.ui.library.rememberFontFamily
 import io.github.sejoung.fontdrop.ui.theme.FontDropPalette
@@ -27,7 +27,7 @@ import io.github.sejoung.fontdrop.ui.theme.FontDropTheme
 fun FontPickerSheet(
     fonts: List<FontAsset>,
     selectedFontId: String?,
-    materializer: FontFileMaterializer,
+    fontFamilyCache: FontFamilyCache,
     onSelect: (String?) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -73,7 +73,7 @@ fun FontPickerSheet(
                         )
                     }
                     items(fonts, key = { it.id }) { font ->
-                        val family by rememberFontFamily(asset = font, materializer = materializer)
+                        val family by rememberFontFamily(asset = font, cache = fontFamilyCache)
                         FontPreviewCard(
                             fontName = font.familyName,
                             styleLabel = ".${font.extension}",

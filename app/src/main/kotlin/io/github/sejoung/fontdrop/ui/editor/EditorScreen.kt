@@ -51,16 +51,17 @@ fun EditorScreen(
     onBack: () -> Unit,
 ) {
     val app = LocalContext.current.applicationContext as FontDropApplication
+    val fontFamilyCache = app.container.fontFamilyCache
     val viewModel: EditorViewModel = viewModel(
         key = "editor-$noteId",
         factory = EditorViewModel.factory(
             noteId = noteId,
             noteRepository = app.container.noteRepository,
             fontRepository = app.container.fontFolderRepository,
+            prewarmer = fontFamilyCache,
         ),
     )
     val state by viewModel.uiState.collectAsState()
-    val materializer = app.container.fontFileMaterializer
     val scope = rememberCoroutineScope()
 
     DisposableEffect(viewModel) {
@@ -70,7 +71,7 @@ fun EditorScreen(
     EditorScreenContent(
         state = state,
         fontFamilyFor = { asset ->
-            val family by rememberFontFamily(asset = asset, materializer = materializer)
+            val family by rememberFontFamily(asset = asset, cache = fontFamilyCache)
             family
         },
         onBack = {
@@ -86,7 +87,7 @@ fun EditorScreen(
         onFontSelected = viewModel::onFontSelected,
         onFontSizeDelta = viewModel::onFontSizeDelta,
         onLineHeightCycle = viewModel::onLineHeightCycle,
-        materializer = materializer,
+        fontFamilyCache = fontFamilyCache,
     )
 }
 
@@ -102,7 +103,7 @@ internal fun EditorScreenContent(
     onFontSelected: (String?) -> Unit,
     onFontSizeDelta: (Int) -> Unit,
     onLineHeightCycle: () -> Unit,
-    materializer: io.github.sejoung.fontdrop.data.font.FontFileMaterializer,
+    fontFamilyCache: io.github.sejoung.fontdrop.data.font.FontFamilyCache,
 ) {
     val selectedAsset = state.selectedFont
     val fontFamily: FontFamily = selectedAsset?.let { fontFamilyFor(it) } ?: FontFamily.Default
@@ -137,7 +138,7 @@ internal fun EditorScreenContent(
             else -> EditorBody(
                 state = state,
                 fontFamily = fontFamily,
-                materializer = materializer,
+                fontFamilyCache = fontFamilyCache,
                 inner = inner,
                 onTitleChange = onTitleChange,
                 onContentChange = onContentChange,
@@ -155,7 +156,7 @@ internal fun EditorScreenContent(
 private fun EditorBody(
     state: EditorUiState,
     fontFamily: FontFamily,
-    materializer: io.github.sejoung.fontdrop.data.font.FontFileMaterializer,
+    fontFamilyCache: io.github.sejoung.fontdrop.data.font.FontFamilyCache,
     inner: PaddingValues,
     onTitleChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
@@ -252,7 +253,7 @@ private fun EditorBody(
         FontPickerSheet(
             fonts = state.availableFonts,
             selectedFontId = state.fontId,
-            materializer = materializer,
+            fontFamilyCache = fontFamilyCache,
             onSelect = onFontSelected,
             onDismiss = onDismissFontPicker,
         )

@@ -1,5 +1,6 @@
 package io.github.sejoung.fontdrop.ui.library
 
+import io.github.sejoung.fontdrop.data.font.FakeFontPrewarmer
 import io.github.sejoung.fontdrop.data.font.FontAsset
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
@@ -21,7 +22,7 @@ class FontLibraryViewModelTest {
     fun `initial state has no folder selected when repo is empty`() = runTest {
         val repo = FakeFontFolderRepository()
 
-        val vm = FontLibraryViewModel(repo)
+        val vm = FontLibraryViewModel(repo, FakeFontPrewarmer())
 
         val state = vm.uiState.value
         assertFalse(state.hasSelectedFolder)
@@ -35,7 +36,7 @@ class FontLibraryViewModelTest {
         val repo = FakeFontFolderRepository(initialFolderUri = "content://tree/fonts")
         repo.scanResult = Result.success(listOf(asset("Inter")))
 
-        val vm = FontLibraryViewModel(repo)
+        val vm = FontLibraryViewModel(repo, FakeFontPrewarmer())
 
         val state = vm.uiState.value
         assertTrue(state.hasSelectedFolder)
@@ -49,7 +50,7 @@ class FontLibraryViewModelTest {
     fun `onFolderSelected persists uri and triggers scan`() = runTest {
         val repo = FakeFontFolderRepository()
         repo.scanResult = Result.success(listOf(asset("Roboto"), asset("Inter")))
-        val vm = FontLibraryViewModel(repo)
+        val vm = FontLibraryViewModel(repo, FakeFontPrewarmer())
 
         vm.onFolderSelected("content://tree/new")
 
@@ -64,7 +65,7 @@ class FontLibraryViewModelTest {
     fun `onRefresh triggers another scan`() = runTest {
         val repo = FakeFontFolderRepository(initialFolderUri = "content://tree/fonts")
         repo.scanResult = Result.success(emptyList())
-        val vm = FontLibraryViewModel(repo)
+        val vm = FontLibraryViewModel(repo, FakeFontPrewarmer())
 
         vm.onRefresh()
 
@@ -75,7 +76,7 @@ class FontLibraryViewModelTest {
     fun `scan failure surfaces error message and clears loading`() = runTest {
         val repo = FakeFontFolderRepository()
         repo.scanResult = Result.failure(IllegalStateException("boom"))
-        val vm = FontLibraryViewModel(repo)
+        val vm = FontLibraryViewModel(repo, FakeFontPrewarmer())
 
         vm.onFolderSelected("content://tree/any")
 
@@ -90,7 +91,7 @@ class FontLibraryViewModelTest {
         val repo = FakeFontFolderRepository(initialFolderUri = "content://tree/fonts")
         val inter = asset("Inter")
         repo.scanResult = Result.success(listOf(inter, asset("Roboto")))
-        val vm = FontLibraryViewModel(repo)
+        val vm = FontLibraryViewModel(repo, FakeFontPrewarmer())
 
         vm.onFontTapped(inter)
         assertEquals("Inter", vm.uiState.value.selectedFontId)
@@ -105,7 +106,7 @@ class FontLibraryViewModelTest {
         val inter = asset("Inter")
         val roboto = asset("Roboto")
         repo.scanResult = Result.success(listOf(inter, roboto))
-        val vm = FontLibraryViewModel(repo)
+        val vm = FontLibraryViewModel(repo, FakeFontPrewarmer())
 
         vm.onFontTapped(inter)
         vm.onFontTapped(roboto)
@@ -118,7 +119,7 @@ class FontLibraryViewModelTest {
         val repo = FakeFontFolderRepository(initialFolderUri = "content://tree/fonts")
         val inter = asset("Inter")
         repo.scanResult = Result.success(listOf(inter))
-        val vm = FontLibraryViewModel(repo)
+        val vm = FontLibraryViewModel(repo, FakeFontPrewarmer())
         vm.onFontTapped(inter)
         assertEquals("Inter", vm.uiState.value.selectedFontId)
 
@@ -129,10 +130,34 @@ class FontLibraryViewModelTest {
     }
 
     @Test
+    fun `scan result is prewarmed so previews do not stall on render`() = runTest {
+        val repo = FakeFontFolderRepository(initialFolderUri = "content://tree/fonts")
+        repo.scanResult = Result.success(listOf(asset("Inter"), asset("Roboto")))
+        val prewarmer = FakeFontPrewarmer()
+
+        FontLibraryViewModel(repo, prewarmer)
+
+        assertEquals(listOf(listOf("Inter", "Roboto")), prewarmer.prewarmed)
+    }
+
+    @Test
+    fun `tapping a font nudges it to the top of the warm up queue`() = runTest {
+        val repo = FakeFontFolderRepository(initialFolderUri = "content://tree/fonts")
+        val inter = asset("Inter")
+        repo.scanResult = Result.success(listOf(inter))
+        val prewarmer = FakeFontPrewarmer()
+        val vm = FontLibraryViewModel(repo, prewarmer)
+
+        vm.onFontTapped(inter)
+
+        assertEquals(listOf("Inter"), prewarmer.ensured)
+    }
+
+    @Test
     fun `onClearFolder resets state to empty`() = runTest {
         val repo = FakeFontFolderRepository(initialFolderUri = "content://tree/fonts")
         repo.scanResult = Result.success(listOf(asset("Inter")))
-        val vm = FontLibraryViewModel(repo)
+        val vm = FontLibraryViewModel(repo, FakeFontPrewarmer())
 
         vm.onClearFolder()
 

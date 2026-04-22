@@ -31,7 +31,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.sejoung.fontdrop.FontDropApplication
 import io.github.sejoung.fontdrop.data.font.FontAsset
-import io.github.sejoung.fontdrop.data.font.FontFileMaterializer
+import io.github.sejoung.fontdrop.data.font.FontFamilyCache
 import io.github.sejoung.fontdrop.ui.components.EmptyState
 import io.github.sejoung.fontdrop.ui.components.FontDropAccentButton
 import io.github.sejoung.fontdrop.ui.components.FontDropTopBar
@@ -45,12 +45,14 @@ private const val PreviewSentence = "The quiet art of letters."
 fun FontLibraryScreen(
     viewModel: FontLibraryViewModel = viewModel(
         factory = FontLibraryViewModel.factory(
-            (LocalContext.current.applicationContext as FontDropApplication)
-                .container.fontFolderRepository
+            repository = (LocalContext.current.applicationContext as FontDropApplication)
+                .container.fontFolderRepository,
+            prewarmer = (LocalContext.current.applicationContext as FontDropApplication)
+                .container.fontFamilyCache,
         )
     ),
-    materializer: FontFileMaterializer = (LocalContext.current.applicationContext as FontDropApplication)
-        .container.fontFileMaterializer,
+    fontFamilyCache: FontFamilyCache = (LocalContext.current.applicationContext as FontDropApplication)
+        .container.fontFamilyCache,
 ) {
     val context = LocalContext.current
     val state by viewModel.uiState.collectAsState()
@@ -74,7 +76,7 @@ fun FontLibraryScreen(
 
     FontLibraryScreenContent(
         state = state,
-        materializer = materializer,
+        fontFamilyCache = fontFamilyCache,
         onPickFolder = { folderPicker.launch(null) },
         onRefresh = viewModel::onRefresh,
         onFontTap = viewModel::onFontTapped,
@@ -85,7 +87,7 @@ fun FontLibraryScreen(
 @Composable
 internal fun FontLibraryScreenContent(
     state: FontLibraryUiState,
-    materializer: FontFileMaterializer,
+    fontFamilyCache: FontFamilyCache,
     onPickFolder: () -> Unit,
     onRefresh: () -> Unit,
     onFontTap: (FontAsset) -> Unit,
@@ -117,7 +119,7 @@ internal fun FontLibraryScreenContent(
                 else -> FontList(
                     fonts = state.fonts,
                     selectedFontId = state.selectedFontId,
-                    materializer = materializer,
+                    fontFamilyCache = fontFamilyCache,
                     onFontTap = onFontTap,
                 )
             }
@@ -166,7 +168,7 @@ private fun LoadingState() {
 private fun FontList(
     fonts: List<FontAsset>,
     selectedFontId: String?,
-    materializer: FontFileMaterializer,
+    fontFamilyCache: FontFamilyCache,
     onFontTap: (FontAsset) -> Unit,
 ) {
     LazyColumn(
@@ -189,7 +191,7 @@ private fun FontList(
             )
         }
         items(fonts, key = { it.id }) { font ->
-            val family by rememberFontFamily(asset = font, materializer = materializer)
+            val family by rememberFontFamily(asset = font, cache = fontFamilyCache)
             FontPreviewCard(
                 fontName = font.familyName,
                 styleLabel = ".${font.extension} · ${font.sizeBytes.formatBytes()}",

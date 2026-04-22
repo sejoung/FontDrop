@@ -1,5 +1,6 @@
 package io.github.sejoung.fontdrop.ui.editor
 
+import io.github.sejoung.fontdrop.data.font.FakeFontPrewarmer
 import io.github.sejoung.fontdrop.data.font.FontAsset
 import io.github.sejoung.fontdrop.data.font.FontFolderRepository
 import io.github.sejoung.fontdrop.data.note.Note
@@ -33,10 +34,12 @@ class EditorViewModelTest {
         val notes = FakeNoteRepository(listOf(note))
         val fonts = FakeFontFolderRepository(fonts = listOf(asset("inter"), asset("roboto")))
 
+        val prewarmer = FakeFontPrewarmer()
         val vm = EditorViewModel(
             noteId = 1,
             noteRepository = notes,
             fontRepository = fonts,
+            prewarmer = prewarmer,
             clock = FakeClock(1000L),
             autoSaveDelayMs = 0L,
         )
@@ -58,6 +61,7 @@ class EditorViewModelTest {
             noteId = 42,
             noteRepository = notes,
             fontRepository = FakeFontFolderRepository(),
+            prewarmer = FakeFontPrewarmer(),
             clock = FakeClock(0L),
             autoSaveDelayMs = 0L,
         )
@@ -78,6 +82,7 @@ class EditorViewModelTest {
             noteId = 1,
             noteRepository = notes,
             fontRepository = FakeFontFolderRepository(),
+            prewarmer = FakeFontPrewarmer(),
             clock = FakeClock(0L),
             autoSaveDelayMs = 500L,
         )
@@ -105,6 +110,7 @@ class EditorViewModelTest {
             noteId = 1,
             noteRepository = notes,
             fontRepository = FakeFontFolderRepository(),
+            prewarmer = FakeFontPrewarmer(),
             clock = FakeClock(0L),
             autoSaveDelayMs = 0L,
         )
@@ -133,6 +139,7 @@ class EditorViewModelTest {
             noteId = 1,
             noteRepository = notes,
             fontRepository = FakeFontFolderRepository(),
+            prewarmer = FakeFontPrewarmer(),
             clock = FakeClock(0L),
             autoSaveDelayMs = 0L,
         )
@@ -155,6 +162,7 @@ class EditorViewModelTest {
             noteId = 1,
             noteRepository = notes,
             fontRepository = FakeFontFolderRepository(fonts = listOf(asset("inter"))),
+            prewarmer = FakeFontPrewarmer(),
             clock = FakeClock(0L),
             autoSaveDelayMs = 0L,
         )
@@ -171,12 +179,56 @@ class EditorViewModelTest {
     }
 
     @Test
+    fun `editor prewarms the current font first and then the rest`() = runTest {
+        val inter = asset("inter")
+        val roboto = asset("roboto")
+        val note = Note(id = 1, fontId = "inter")
+        val prewarmer = FakeFontPrewarmer()
+        val vm = EditorViewModel(
+            noteId = 1,
+            noteRepository = FakeNoteRepository(listOf(note)),
+            fontRepository = FakeFontFolderRepository(fonts = listOf(inter, roboto)),
+            prewarmer = prewarmer,
+            clock = FakeClock(0L),
+            autoSaveDelayMs = 0L,
+        )
+        advanceUntilIdle()
+
+        assertEquals(listOf("inter"), prewarmer.ensured)
+        assertEquals(listOf(listOf("inter", "roboto")), prewarmer.prewarmed)
+        // keep referenced to avoid unused-var warning
+        @Suppress("UNUSED_VARIABLE") val unused = vm
+    }
+
+    @Test
+    fun `selecting a font eagerly loads it so the change shows instantly`() = runTest {
+        val inter = asset("inter")
+        val prewarmer = FakeFontPrewarmer()
+        val vm = EditorViewModel(
+            noteId = 1,
+            noteRepository = FakeNoteRepository(listOf(Note(id = 1))),
+            fontRepository = FakeFontFolderRepository(fonts = listOf(inter)),
+            prewarmer = prewarmer,
+            clock = FakeClock(0L),
+            autoSaveDelayMs = 0L,
+        )
+        advanceUntilIdle()
+        prewarmer.ensured.clear()
+
+        vm.onFontSelected("inter")
+        advanceUntilIdle()
+
+        assertEquals(listOf("inter"), prewarmer.ensured)
+    }
+
+    @Test
     fun `flushPendingSave persists latest draft without waiting for debounce`() = runTest {
         val notes = FakeNoteRepository(listOf(Note(id = 1, title = "")))
         val vm = EditorViewModel(
             noteId = 1,
             noteRepository = notes,
             fontRepository = FakeFontFolderRepository(),
+            prewarmer = FakeFontPrewarmer(),
             clock = FakeClock(0L),
             autoSaveDelayMs = 5_000L,
         )

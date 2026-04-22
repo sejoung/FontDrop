@@ -6,6 +6,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.sejoung.fontdrop.data.font.FontAsset
 import io.github.sejoung.fontdrop.data.font.FontFolderRepository
+import io.github.sejoung.fontdrop.data.font.FontPrewarmer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,6 +16,7 @@ import kotlinx.coroutines.launch
 
 class FontLibraryViewModel(
     private val repository: FontFolderRepository,
+    private val prewarmer: FontPrewarmer,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(FontLibraryUiState())
@@ -52,6 +54,7 @@ class FontLibraryViewModel(
             val next = if (current.selectedFontId == asset.id) null else asset.id
             current.copy(selectedFontId = next)
         }
+        viewModelScope.launch { prewarmer.ensureLoaded(asset) }
     }
 
     fun onClearFolder() {
@@ -82,11 +85,17 @@ class FontLibraryViewModel(
                 },
             )
         }
+        result.getOrNull()?.let { fonts ->
+            viewModelScope.launch { prewarmer.prewarm(fonts) }
+        }
     }
 
     companion object {
-        fun factory(repository: FontFolderRepository) = viewModelFactory {
-            initializer { FontLibraryViewModel(repository) }
+        fun factory(
+            repository: FontFolderRepository,
+            prewarmer: FontPrewarmer,
+        ) = viewModelFactory {
+            initializer { FontLibraryViewModel(repository, prewarmer) }
         }
     }
 }
