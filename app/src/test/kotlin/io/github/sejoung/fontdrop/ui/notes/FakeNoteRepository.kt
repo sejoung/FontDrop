@@ -14,6 +14,10 @@ class FakeNoteRepository(
     private val notes = MutableStateFlow(initial)
     private var nextId: Long = (initial.maxOfOrNull { it.id } ?: 0L) + 1
 
+    val currentNotes: List<Note> get() = notes.value
+
+    fun noteById(id: Long): Note? = notes.value.firstOrNull { it.id == id }
+
     var createdNoteId: Long = 0L
         private set
 
