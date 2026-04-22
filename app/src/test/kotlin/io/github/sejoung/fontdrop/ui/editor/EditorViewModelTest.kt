@@ -241,6 +241,39 @@ class EditorViewModelTest {
     }
 
     @Test
+    fun `onDeleteNote removes the note, blocks further saves, and signals completion`() = runTest {
+        val notes = FakeNoteRepository(
+            listOf(Note(id = 1, title = "bye", fontId = null, fontSizeSp = Note.DEFAULT_FONT_SIZE_SP)),
+        )
+        val vm = EditorViewModel(
+            noteId = 1,
+            noteRepository = notes,
+            fontRepository = FakeFontFolderRepository(),
+            prewarmer = FakeFontPrewarmer(),
+            clock = FakeClock(0L),
+            autoSaveDelayMs = 0L,
+        )
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.noteExists)
+
+        vm.onDeleteNote()
+        advanceUntilIdle()
+
+        assertNull(notes.noteById(1))
+        assertFalse(vm.uiState.value.noteExists)
+        assertTrue(vm.deleteCompleted.value)
+
+        // A late flush (e.g. from DisposableEffect.onDispose) must not resurrect the note.
+        vm.onTitleChange("ghost")
+        vm.flushPendingSave()
+        advanceUntilIdle()
+        assertNull(notes.noteById(1))
+
+        vm.onDeleteEventConsumed()
+        assertFalse(vm.deleteCompleted.value)
+    }
+
+    @Test
     fun `flushPendingSave persists latest draft without waiting for debounce`() = runTest {
         val notes = FakeNoteRepository(listOf(Note(id = 1, title = "")))
         val vm = EditorViewModel(

@@ -6,9 +6,12 @@ import io.github.sejoung.fontdrop.data.font.FontFolderRepository
 import io.github.sejoung.fontdrop.data.note.Note
 import io.github.sejoung.fontdrop.ui.library.MainDispatcherRule
 import io.github.sejoung.fontdrop.util.FakeClock
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -167,6 +170,47 @@ class NoteListViewModelTest {
         vm.onCreateNote()
 
         assertNull(repo.noteById(repo.createdNoteId)?.fontId)
+    }
+
+    @Test
+    fun `onDeleteNote removes the note from storage and emits the snapshot for undo`() = runTest {
+        val repo = FakeNoteRepository(
+            initial = listOf(Note(id = 7, title = "bye", content = "soon gone", updatedAt = 1L)),
+        )
+        val vm = buildViewModel(repo)
+
+        val emitted = async(start = CoroutineStart.UNDISPATCHED) {
+            vm.deletionEvents.first()
+        }
+        vm.onDeleteNote(7)
+        val deleted = emitted.await()
+
+        assertNull(repo.noteById(7))
+        assertEquals("bye", deleted.title)
+        assertEquals("soon gone", deleted.content)
+    }
+
+    @Test
+    fun `onRestoreNote brings back the content under a fresh id`() = runTest {
+        val repo = FakeNoteRepository()
+        val vm = buildViewModel(repo)
+        val original = Note(id = 42, title = "resurrect", content = "me", updatedAt = 1L)
+
+        vm.onRestoreNote(original)
+
+        val restored = repo.currentNotes.single { it.title == "resurrect" }
+        assertEquals("me", restored.content)
+        assertNotEquals(42L, restored.id)
+    }
+
+    @Test
+    fun `onDeleteNote on unknown id is a no-op`() = runTest {
+        val repo = FakeNoteRepository()
+        val vm = buildViewModel(repo)
+
+        vm.onDeleteNote(999)
+
+        assertTrue(repo.currentNotes.isEmpty())
     }
 
     @Test

@@ -3,6 +3,7 @@ package io.github.sejoung.fontdrop.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -25,6 +26,7 @@ fun FontDropTopBar(
     onLeadingClick: (() -> Unit)? = null,
     trailingIcon: ImageVector? = null,
     onTrailingClick: (() -> Unit)? = null,
+    trailingContent: @Composable RowScope.() -> Unit = {},
 ) {
     Row(
         modifier = modifier
@@ -60,5 +62,6 @@ fun FontDropTopBar(
                 )
             }
         }
+        trailingContent()
     }
 }

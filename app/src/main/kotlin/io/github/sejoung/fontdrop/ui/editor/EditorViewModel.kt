@@ -33,6 +33,9 @@ class EditorViewModel(
     private val _uiState = MutableStateFlow(EditorUiState())
     val uiState: StateFlow<EditorUiState> = _uiState.asStateFlow()
 
+    private val _deleteCompleted = MutableStateFlow(false)
+    val deleteCompleted: StateFlow<Boolean> = _deleteCompleted.asStateFlow()
+
     private var saveJob: Job? = null
 
     init {
@@ -117,6 +120,22 @@ class EditorViewModel(
         // NonCancellable so the save completes even when the caller (e.g. a
         // disposed UI coroutine during rotation) is being cancelled mid-flight.
         withContext(NonCancellable) { save() }
+    }
+
+    fun onDeleteNote() {
+        viewModelScope.launch {
+            saveJob?.cancel()
+            saveJob = null
+            // Switch to a loading screen briefly and mark the note as gone so any
+            // in-flight requestFlush bails before the DB row disappears.
+            _uiState.update { it.copy(isLoading = true, noteExists = false) }
+            withContext(NonCancellable) { noteRepository.deleteNote(noteId) }
+            _deleteCompleted.value = true
+        }
+    }
+
+    fun onDeleteEventConsumed() {
+        _deleteCompleted.value = false
     }
 
     /** Fire-and-forget flush safe to call from DisposableEffect.onDispose.  */

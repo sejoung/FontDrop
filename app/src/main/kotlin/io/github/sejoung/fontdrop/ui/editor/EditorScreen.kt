@@ -12,20 +12,29 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -43,7 +52,6 @@ import io.github.sejoung.fontdrop.ui.components.FontDropTopBar
 import io.github.sejoung.fontdrop.ui.library.rememberFontFamily
 import io.github.sejoung.fontdrop.ui.theme.FontDropPalette
 import io.github.sejoung.fontdrop.ui.theme.FontDropTheme
-import kotlinx.coroutines.launch
 
 @Composable
 fun EditorScreen(
@@ -62,12 +70,24 @@ fun EditorScreen(
         ),
     )
     val state by viewModel.uiState.collectAsState()
-    val scope = rememberCoroutineScope()
+    val deleteCompleted by viewModel.deleteCompleted.collectAsState()
+    // Guards against double-pop: a second tap on the back arrow (or rapid
+    // re-entry) while the first pop is mid-flight otherwise empties the
+    // NavHost backstack and blanks the screen.
+    var navigated by remember { mutableStateOf(false) }
 
     DisposableEffect(viewModel) {
         // viewModelScope survives composition tear-down (rotation, background);
         // requestFlush hops onto it so the pending save outlives this screen.
         onDispose { viewModel.requestFlush() }
+    }
+
+    LaunchedEffect(deleteCompleted) {
+        if (deleteCompleted && !navigated) {
+            navigated = true
+            onBack()
+            viewModel.onDeleteEventConsumed()
+        }
     }
 
     EditorScreenContent(
@@ -77,8 +97,8 @@ fun EditorScreen(
             family
         },
         onBack = {
-            scope.launch {
-                viewModel.flushPendingSave()
+            if (!navigated) {
+                navigated = true
                 onBack()
             }
         },
@@ -89,6 +109,7 @@ fun EditorScreen(
         onFontSelected = viewModel::onFontSelected,
         onFontSizeDelta = viewModel::onFontSizeDelta,
         onLineHeightCycle = viewModel::onLineHeightCycle,
+        onDeleteConfirmed = viewModel::onDeleteNote,
         fontFamilyCache = fontFamilyCache,
     )
 }
@@ -105,10 +126,14 @@ internal fun EditorScreenContent(
     onFontSelected: (String?) -> Unit,
     onFontSizeDelta: (Int) -> Unit,
     onLineHeightCycle: () -> Unit,
+    onDeleteConfirmed: () -> Unit,
     fontFamilyCache: io.github.sejoung.fontdrop.data.font.FontFamilyCache,
 ) {
     val selectedAsset = state.selectedFont
     val fontFamily: FontFamily = selectedAsset?.let { fontFamilyFor(it) } ?: FontFamily.Default
+
+    var showMenu by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -117,6 +142,47 @@ internal fun EditorScreenContent(
                 title = "",
                 leadingIcon = Icons.AutoMirrored.Rounded.ArrowBack,
                 onLeadingClick = onBack,
+                trailingContent = {
+                    if (state.noteExists) {
+                        Box {
+                            IconButton(onClick = { showMenu = true }) {
+                                Icon(
+                                    imageVector = Icons.Rounded.MoreVert,
+                                    contentDescription = "More actions",
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showMenu,
+                                onDismissRequest = { showMenu = false },
+                                containerColor = FontDropPalette.BackgroundElevated,
+                            ) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = "Delete note",
+                                            style = FontDropTheme.type.bodyL,
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Outlined.DeleteOutline,
+                                            contentDescription = null,
+                                        )
+                                    },
+                                    colors = MenuDefaults.itemColors(
+                                        textColor = FontDropPalette.ErrorWarm,
+                                        leadingIconColor = FontDropPalette.ErrorWarm,
+                                    ),
+                                    onClick = {
+                                        showMenu = false
+                                        showDeleteDialog = true
+                                    },
+                                )
+                            }
+                        }
+                    }
+                },
             )
         },
     ) { inner ->
@@ -152,6 +218,59 @@ internal fun EditorScreenContent(
             )
         }
     }
+
+    if (showDeleteDialog) {
+        DeleteNoteDialog(
+            onConfirm = {
+                showDeleteDialog = false
+                onDeleteConfirmed()
+            },
+            onDismiss = { showDeleteDialog = false },
+        )
+    }
+}
+
+@Composable
+private fun DeleteNoteDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = FontDropPalette.BackgroundBase,
+        title = {
+            Text(
+                text = "Delete this note?",
+                style = FontDropTheme.type.headingS,
+                color = FontDropPalette.TextPrimary,
+            )
+        },
+        text = {
+            Text(
+                text = "This can't be undone.",
+                style = FontDropTheme.type.bodyL,
+                color = FontDropPalette.TextSecondary,
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(
+                    text = "Delete",
+                    style = FontDropTheme.type.labelL,
+                    color = FontDropPalette.ErrorWarm,
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(
+                    text = "Cancel",
+                    style = FontDropTheme.type.labelL,
+                    color = FontDropPalette.TextPrimary,
+                )
+            }
+        },
+    )
 }
 
 @Composable

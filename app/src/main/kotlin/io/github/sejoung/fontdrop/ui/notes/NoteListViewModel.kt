@@ -11,10 +11,13 @@ import io.github.sejoung.fontdrop.data.note.Note
 import io.github.sejoung.fontdrop.data.note.NoteRepository
 import io.github.sejoung.fontdrop.ui.util.RelativeTime
 import io.github.sejoung.fontdrop.util.Clock
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.ZoneId
@@ -32,6 +35,9 @@ class NoteListViewModel(
 
     private val _newNoteEvents = MutableStateFlow<Long?>(null)
     val newNoteEvents: StateFlow<Long?> = _newNoteEvents.asStateFlow()
+
+    private val deletionChannel = Channel<Note>(capacity = Channel.BUFFERED)
+    val deletionEvents: Flow<Note> = deletionChannel.receiveAsFlow()
 
     init {
         viewModelScope.launch {
@@ -62,6 +68,23 @@ class NoteListViewModel(
         _newNoteEvents.value = null
     }
 
+    fun onDeleteNote(id: Long) {
+        viewModelScope.launch {
+            val snapshot = repository.observeNote(id).first() ?: return@launch
+            repository.deleteNote(id)
+            deletionChannel.send(snapshot)
+        }
+    }
+
+    fun onRestoreNote(note: Note) {
+        viewModelScope.launch {
+            // Save with id = 0 so Room assigns a fresh primary key; content and
+            // settings round-trip unchanged. Landing at the top of the list
+            // gives the user an obvious "it's back" confirmation.
+            repository.saveNote(note.copy(id = 0L))
+        }
+    }
+
     private fun Note.toListItem(now: Long, fontsById: Map<String, FontAsset>): NoteListItem =
         NoteListItem(
             id = id,
@@ -78,6 +101,11 @@ class NoteListViewModel(
             firstLine.length <= MAX_SNIPPET_LENGTH -> firstLine
             else -> firstLine.take(MAX_SNIPPET_LENGTH).trimEnd() + "…"
         }
+    }
+
+    override fun onCleared() {
+        deletionChannel.close()
+        super.onCleared()
     }
 
     companion object {
