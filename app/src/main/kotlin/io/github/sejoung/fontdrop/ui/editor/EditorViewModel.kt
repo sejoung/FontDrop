@@ -47,6 +47,12 @@ class EditorViewModel(
 
     private var saveJob: Job? = null
 
+    // Tracks whether the user actually edited anything since the last persist.
+    // Without it, every requestFlush (DisposableEffect on screen exit, share
+    // flow, etc.) would touch the DB and the repository stamps updatedAt=now
+    // on every save, causing "edited time" to drift just by opening a note.
+    private var hasPendingChanges: Boolean = false
+
     init {
         viewModelScope.launch {
             val note = noteRepository.observeNote(noteId).first()
@@ -81,12 +87,12 @@ class EditorViewModel(
 
     fun onTitleChange(title: String) {
         _uiState.update { it.copy(title = title) }
-        scheduleSave()
+        markDirtyAndScheduleSave()
     }
 
     fun onContentChange(content: String) {
         _uiState.update { it.copy(content = content) }
-        scheduleSave()
+        markDirtyAndScheduleSave()
     }
 
     fun onFontPickerToggle(show: Boolean) {
@@ -94,21 +100,23 @@ class EditorViewModel(
     }
 
     fun onFontSelected(fontId: String?) {
+        val current = _uiState.value
         _uiState.update { it.copy(fontId = fontId, showFontPicker = false) }
         val asset = _uiState.value.availableFonts.firstOrNull { it.id == fontId }
         if (asset != null) {
             viewModelScope.launch { prewarmer.ensureLoaded(asset) }
         }
-        scheduleSave()
+        if (current.fontId != fontId) markDirtyAndScheduleSave()
     }
 
     fun onFontSizeDelta(delta: Int) {
+        val before = _uiState.value.fontSizeSp
         _uiState.update { current ->
             val next = (current.fontSizeSp + delta)
                 .coerceIn(EditorUiState.MIN_FONT_SIZE_SP, EditorUiState.MAX_FONT_SIZE_SP)
             if (next == current.fontSizeSp) current else current.copy(fontSizeSp = next)
         }
-        scheduleSave()
+        if (_uiState.value.fontSizeSp != before) markDirtyAndScheduleSave()
     }
 
     fun onLineHeightCycle() {
@@ -120,7 +128,7 @@ class EditorViewModel(
             val nextIndex = (currentIndex + 1) % presets.size
             current.copy(lineHeightMultiplier = presets[nextIndex])
         }
-        scheduleSave()
+        markDirtyAndScheduleSave()
     }
 
     suspend fun flushPendingSave() {
@@ -170,6 +178,11 @@ class EditorViewModel(
         viewModelScope.launch { flushPendingSave() }
     }
 
+    private fun markDirtyAndScheduleSave() {
+        hasPendingChanges = true
+        scheduleSave()
+    }
+
     private fun scheduleSave() {
         if (!_uiState.value.noteExists) return
         saveJob?.cancel()
@@ -180,6 +193,7 @@ class EditorViewModel(
     }
 
     private suspend fun save() {
+        if (!hasPendingChanges) return
         val state = _uiState.value
         if (!state.noteExists) return
         val note = Note(
@@ -193,6 +207,7 @@ class EditorViewModel(
             updatedAt = state.updatedAt,
         )
         noteRepository.saveNote(note)
+        hasPendingChanges = false
     }
 
     override fun onCleared() {

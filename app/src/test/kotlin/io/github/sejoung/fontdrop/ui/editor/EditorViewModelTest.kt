@@ -310,6 +310,50 @@ class EditorViewModelTest {
     }
 
     @Test
+    fun `opening a note and flushing without edits does not touch the repository`() = runTest {
+        val notes = FakeNoteRepository(
+            listOf(Note(id = 1, title = "original", content = "unchanged", updatedAt = 1_000L)),
+        )
+        val vm = EditorViewModel(
+            noteId = 1,
+            noteRepository = notes,
+            fontRepository = FakeFontFolderRepository(),
+            prewarmer = FakeFontPrewarmer(),
+            imageRenderer = FakeNoteImageRenderer(),
+            clock = FakeClock(0L),
+            autoSaveDelayMs = 500L,
+        )
+        advanceUntilIdle()
+
+        vm.requestFlush()
+        advanceUntilIdle()
+
+        assertEquals(0, notes.saveInvocations)
+    }
+
+    @Test
+    fun `toggling the font picker alone does not mark the note dirty`() = runTest {
+        val notes = FakeNoteRepository(listOf(Note(id = 1, title = "x")))
+        val vm = EditorViewModel(
+            noteId = 1,
+            noteRepository = notes,
+            fontRepository = FakeFontFolderRepository(),
+            prewarmer = FakeFontPrewarmer(),
+            imageRenderer = FakeNoteImageRenderer(),
+            clock = FakeClock(0L),
+            autoSaveDelayMs = 0L,
+        )
+        advanceUntilIdle()
+
+        vm.onFontPickerToggle(true)
+        vm.onFontPickerToggle(false)
+        vm.flushPendingSave()
+        advanceUntilIdle()
+
+        assertEquals(0, notes.saveInvocations)
+    }
+
+    @Test
     fun `onShareNote flushes pending edits, renders with current state, and emits file`() = runTest {
         val inter = asset("inter")
         val notes = FakeNoteRepository(

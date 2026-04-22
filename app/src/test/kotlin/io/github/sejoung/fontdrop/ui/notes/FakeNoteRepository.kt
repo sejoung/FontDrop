@@ -21,6 +21,9 @@ class FakeNoteRepository(
     var createdNoteId: Long = 0L
         private set
 
+    var saveInvocations: Int = 0
+        private set
+
     override fun observeNotes(): Flow<List<Note>> =
         notes.map { list -> list.sortedByDescending { it.updatedAt } }
 
@@ -37,6 +40,7 @@ class FakeNoteRepository(
     }
 
     override suspend fun saveNote(note: Note): Long {
+        saveInvocations += 1
         val assigned = if (note.id == 0L) nextId++ else note.id
         notes.update { current ->
             current.filterNot { it.id == assigned } + note.copy(id = assigned)
