@@ -4,12 +4,16 @@ import io.github.sejoung.fontdrop.data.font.FakeFontPrewarmer
 import io.github.sejoung.fontdrop.data.font.FontAsset
 import io.github.sejoung.fontdrop.data.font.FontFolderRepository
 import io.github.sejoung.fontdrop.data.note.Note
+import io.github.sejoung.fontdrop.data.share.FakeNoteImageRenderer
 import io.github.sejoung.fontdrop.ui.library.MainDispatcherRule
 import io.github.sejoung.fontdrop.ui.notes.FakeNoteRepository
 import io.github.sejoung.fontdrop.util.FakeClock
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -17,6 +21,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -40,6 +45,7 @@ class EditorViewModelTest {
             noteRepository = notes,
             fontRepository = fonts,
             prewarmer = prewarmer,
+            imageRenderer = FakeNoteImageRenderer(),
             clock = FakeClock(1000L),
             autoSaveDelayMs = 0L,
         )
@@ -62,6 +68,7 @@ class EditorViewModelTest {
             noteRepository = notes,
             fontRepository = FakeFontFolderRepository(),
             prewarmer = FakeFontPrewarmer(),
+            imageRenderer = FakeNoteImageRenderer(),
             clock = FakeClock(0L),
             autoSaveDelayMs = 0L,
         )
@@ -83,6 +90,7 @@ class EditorViewModelTest {
             noteRepository = notes,
             fontRepository = FakeFontFolderRepository(),
             prewarmer = FakeFontPrewarmer(),
+            imageRenderer = FakeNoteImageRenderer(),
             clock = FakeClock(0L),
             autoSaveDelayMs = 500L,
         )
@@ -111,6 +119,7 @@ class EditorViewModelTest {
             noteRepository = notes,
             fontRepository = FakeFontFolderRepository(),
             prewarmer = FakeFontPrewarmer(),
+            imageRenderer = FakeNoteImageRenderer(),
             clock = FakeClock(0L),
             autoSaveDelayMs = 0L,
         )
@@ -140,6 +149,7 @@ class EditorViewModelTest {
             noteRepository = notes,
             fontRepository = FakeFontFolderRepository(),
             prewarmer = FakeFontPrewarmer(),
+            imageRenderer = FakeNoteImageRenderer(),
             clock = FakeClock(0L),
             autoSaveDelayMs = 0L,
         )
@@ -163,6 +173,7 @@ class EditorViewModelTest {
             noteRepository = notes,
             fontRepository = FakeFontFolderRepository(fonts = listOf(asset("inter"))),
             prewarmer = FakeFontPrewarmer(),
+            imageRenderer = FakeNoteImageRenderer(),
             clock = FakeClock(0L),
             autoSaveDelayMs = 0L,
         )
@@ -189,6 +200,7 @@ class EditorViewModelTest {
             noteRepository = FakeNoteRepository(listOf(note)),
             fontRepository = FakeFontFolderRepository(fonts = listOf(inter, roboto)),
             prewarmer = prewarmer,
+            imageRenderer = FakeNoteImageRenderer(),
             clock = FakeClock(0L),
             autoSaveDelayMs = 0L,
         )
@@ -208,6 +220,7 @@ class EditorViewModelTest {
             noteRepository = FakeNoteRepository(listOf(Note(id = 1))),
             fontRepository = FakeFontFolderRepository(fonts = listOf(inter)),
             prewarmer = prewarmer,
+            imageRenderer = FakeNoteImageRenderer(),
             clock = FakeClock(0L),
             autoSaveDelayMs = 0L,
         )
@@ -228,6 +241,7 @@ class EditorViewModelTest {
             noteRepository = notes,
             fontRepository = FakeFontFolderRepository(),
             prewarmer = FakeFontPrewarmer(),
+            imageRenderer = FakeNoteImageRenderer(),
             clock = FakeClock(0L),
             autoSaveDelayMs = 5_000L,
         )
@@ -250,6 +264,7 @@ class EditorViewModelTest {
             noteRepository = notes,
             fontRepository = FakeFontFolderRepository(),
             prewarmer = FakeFontPrewarmer(),
+            imageRenderer = FakeNoteImageRenderer(),
             clock = FakeClock(0L),
             autoSaveDelayMs = 0L,
         )
@@ -281,6 +296,7 @@ class EditorViewModelTest {
             noteRepository = notes,
             fontRepository = FakeFontFolderRepository(),
             prewarmer = FakeFontPrewarmer(),
+            imageRenderer = FakeNoteImageRenderer(),
             clock = FakeClock(0L),
             autoSaveDelayMs = 5_000L,
         )
@@ -291,6 +307,60 @@ class EditorViewModelTest {
         advanceUntilIdle()
 
         assertEquals("immediate", notes.noteById(1)?.title)
+    }
+
+    @Test
+    fun `onShareNote flushes pending edits, renders with current state, and emits file`() = runTest {
+        val inter = asset("inter")
+        val notes = FakeNoteRepository(
+            listOf(Note(id = 1, title = "initial", content = "", fontId = "inter")),
+        )
+        val renderer = FakeNoteImageRenderer()
+        val vm = EditorViewModel(
+            noteId = 1,
+            noteRepository = notes,
+            fontRepository = FakeFontFolderRepository(fonts = listOf(inter)),
+            prewarmer = FakeFontPrewarmer(),
+            imageRenderer = renderer,
+            clock = FakeClock(0L),
+            autoSaveDelayMs = 1_000L,
+        )
+        advanceUntilIdle()
+
+        val emitted = async(start = CoroutineStart.UNDISPATCHED) {
+            vm.shareEvents.first()
+        }
+        vm.onContentChange("latest draft")
+        vm.onShareNote()
+        val file = emitted.await()
+
+        assertNotNull(file)
+        val request = renderer.renderCalls.single()
+        assertEquals("initial", request.title)
+        assertEquals("latest draft", request.content)
+        assertEquals("inter", request.asset?.id)
+        // pending debounce was flushed, not deferred
+        assertEquals("latest draft", notes.noteById(1)?.content)
+    }
+
+    @Test
+    fun `onShareNote on missing note does not emit anything`() = runTest {
+        val renderer = FakeNoteImageRenderer()
+        val vm = EditorViewModel(
+            noteId = 42,
+            noteRepository = FakeNoteRepository(),
+            fontRepository = FakeFontFolderRepository(),
+            prewarmer = FakeFontPrewarmer(),
+            imageRenderer = renderer,
+            clock = FakeClock(0L),
+            autoSaveDelayMs = 0L,
+        )
+        advanceUntilIdle()
+
+        vm.onShareNote()
+        advanceUntilIdle()
+
+        assertTrue(renderer.renderCalls.isEmpty())
     }
 
     private fun asset(id: String) = FontAsset(

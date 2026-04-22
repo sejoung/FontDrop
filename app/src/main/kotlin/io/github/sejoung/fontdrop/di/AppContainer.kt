@@ -14,12 +14,15 @@ import io.github.sejoung.fontdrop.data.note.FontDropDatabase
 import io.github.sejoung.fontdrop.data.note.NoteRepository
 import io.github.sejoung.fontdrop.data.note.NoteRepositoryImpl
 import io.github.sejoung.fontdrop.data.prefs.FontFolderPreferences
+import io.github.sejoung.fontdrop.data.share.AndroidNoteImageRenderer
+import io.github.sejoung.fontdrop.data.share.NoteImageRenderer
 import io.github.sejoung.fontdrop.util.SystemClock
 
 interface AppContainer {
     val fontFolderRepository: FontFolderRepository
     val fontFamilyCache: FontFamilyCache
     val noteRepository: NoteRepository
+    val noteImageRenderer: NoteImageRenderer
 }
 
 private val Context.fontDropDataStore: DataStore<Preferences> by preferencesDataStore(name = "fontdrop_prefs")
@@ -29,6 +32,13 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
 
     private val fontFolderPreferences by lazy {
         FontFolderPreferences(appContext.fontDropDataStore)
+    }
+
+    private val fontFileMaterializer: FontFileMaterializer by lazy {
+        FontFileMaterializer(
+            reader = AndroidFontContentReader(appContext),
+            cacheDirProvider = { appContext.cacheDir },
+        )
     }
 
     private val database: FontDropDatabase by lazy {
@@ -43,15 +53,14 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
     }
 
     override val fontFamilyCache: FontFamilyCache by lazy {
-        FontFamilyCache(
-            materializer = FontFileMaterializer(
-                reader = AndroidFontContentReader(appContext),
-                cacheDirProvider = { appContext.cacheDir },
-            ),
-        )
+        FontFamilyCache(materializer = fontFileMaterializer)
     }
 
     override val noteRepository: NoteRepository by lazy {
         NoteRepositoryImpl(dao = database.noteDao(), clock = SystemClock)
+    }
+
+    override val noteImageRenderer: NoteImageRenderer by lazy {
+        AndroidNoteImageRenderer(context = appContext, materializer = fontFileMaterializer)
     }
 }

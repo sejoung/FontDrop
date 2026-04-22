@@ -10,9 +10,12 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import android.content.ClipData
+import android.content.Intent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.IosShare
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -46,6 +49,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TextFieldValue.Companion.Saver
 import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.sejoung.fontdrop.FontDropApplication
 import io.github.sejoung.fontdrop.ui.components.FontDropTopBar
@@ -58,7 +62,8 @@ fun EditorScreen(
     noteId: Long,
     onBack: () -> Unit,
 ) {
-    val app = LocalContext.current.applicationContext as FontDropApplication
+    val context = LocalContext.current
+    val app = context.applicationContext as FontDropApplication
     val fontFamilyCache = app.container.fontFamilyCache
     val viewModel: EditorViewModel = viewModel(
         key = "editor-$noteId",
@@ -67,6 +72,7 @@ fun EditorScreen(
             noteRepository = app.container.noteRepository,
             fontRepository = app.container.fontFolderRepository,
             prewarmer = fontFamilyCache,
+            imageRenderer = app.container.noteImageRenderer,
         ),
     )
     val state by viewModel.uiState.collectAsState()
@@ -90,6 +96,26 @@ fun EditorScreen(
         }
     }
 
+    LaunchedEffect(viewModel) {
+        viewModel.shareEvents.collect { file ->
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                file,
+            )
+            val send = Intent(Intent.ACTION_SEND).apply {
+                type = "image/png"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                // ClipData is what the system share sheet reads to render a
+                // thumbnail preview at the top; without it the preview area
+                // stays blank even though the receiving app gets the image.
+                clipData = ClipData.newUri(context.contentResolver, "Note", uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(Intent.createChooser(send, "Share note"))
+        }
+    }
+
     EditorScreenContent(
         state = state,
         fontFamilyFor = { asset ->
@@ -110,6 +136,7 @@ fun EditorScreen(
         onFontSizeDelta = viewModel::onFontSizeDelta,
         onLineHeightCycle = viewModel::onLineHeightCycle,
         onDeleteConfirmed = viewModel::onDeleteNote,
+        onShareRequested = viewModel::onShareNote,
         fontFamilyCache = fontFamilyCache,
     )
 }
@@ -127,6 +154,7 @@ internal fun EditorScreenContent(
     onFontSizeDelta: (Int) -> Unit,
     onLineHeightCycle: () -> Unit,
     onDeleteConfirmed: () -> Unit,
+    onShareRequested: () -> Unit,
     fontFamilyCache: io.github.sejoung.fontdrop.data.font.FontFamilyCache,
 ) {
     val selectedAsset = state.selectedFont
@@ -157,6 +185,28 @@ internal fun EditorScreenContent(
                                 onDismissRequest = { showMenu = false },
                                 containerColor = FontDropPalette.BackgroundElevated,
                             ) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = "Share as image",
+                                            style = FontDropTheme.type.bodyL,
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Outlined.IosShare,
+                                            contentDescription = null,
+                                        )
+                                    },
+                                    colors = MenuDefaults.itemColors(
+                                        textColor = FontDropPalette.TextPrimary,
+                                        leadingIconColor = FontDropPalette.Ink700,
+                                    ),
+                                    onClick = {
+                                        showMenu = false
+                                        onShareRequested()
+                                    },
+                                )
                                 DropdownMenuItem(
                                     text = {
                                         Text(
