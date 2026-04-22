@@ -38,8 +38,7 @@ import io.github.sejoung.fontdrop.ui.components.FontDropTopBar
 import io.github.sejoung.fontdrop.ui.components.FontPreviewCard
 import io.github.sejoung.fontdrop.ui.theme.FontDropPalette
 import io.github.sejoung.fontdrop.ui.theme.FontDropTheme
-
-private const val PreviewSentence = "The quiet art of letters."
+import io.github.sejoung.fontdrop.ui.util.FONT_PREVIEW_SENTENCE
 
 @Composable
 fun FontLibraryScreen(
@@ -195,7 +194,7 @@ private fun FontList(
             FontPreviewCard(
                 fontName = font.familyName,
                 styleLabel = ".${font.extension} · ${font.sizeBytes.formatBytes()}",
-                previewText = PreviewSentence,
+                previewText = FONT_PREVIEW_SENTENCE,
                 previewFontFamily = family ?: FontFamily.Default,
                 isLoading = family == null,
                 selected = font.id == selectedFontId,

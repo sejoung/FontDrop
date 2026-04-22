@@ -13,7 +13,7 @@ data class Note(
     val isBlank: Boolean get() = title.isBlank() && content.isBlank()
 
     companion object {
-        const val DEFAULT_FONT_SIZE_SP: Int = 16
+        const val DEFAULT_FONT_SIZE_SP: Int = 24
         const val DEFAULT_LINE_HEIGHT_MULTIPLIER: Float = 1.4f
     }
 }

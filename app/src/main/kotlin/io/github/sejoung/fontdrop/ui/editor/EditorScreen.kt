@@ -65,7 +65,9 @@ fun EditorScreen(
     val scope = rememberCoroutineScope()
 
     DisposableEffect(viewModel) {
-        onDispose { scope.launch { viewModel.flushPendingSave() } }
+        // viewModelScope survives composition tear-down (rotation, background);
+        // requestFlush hops onto it so the pending save outlives this screen.
+        onDispose { viewModel.requestFlush() }
     }
 
     EditorScreenContent(

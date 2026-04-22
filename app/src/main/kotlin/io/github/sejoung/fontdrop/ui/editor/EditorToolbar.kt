@@ -151,7 +151,7 @@ private fun LineHeightButton(
                 .padding(horizontal = FontDropTheme.spacing.sm)
                 .height(36.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(FontDropTheme.spacing.s),
         ) {
             Icon(
                 imageVector = Icons.Rounded.FormatLineSpacing,

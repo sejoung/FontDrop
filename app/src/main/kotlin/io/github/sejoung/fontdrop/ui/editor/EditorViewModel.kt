@@ -11,6 +11,7 @@ import io.github.sejoung.fontdrop.data.note.NoteRepository
 import io.github.sejoung.fontdrop.util.Clock
 import io.github.sejoung.fontdrop.util.SystemClock
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class EditorViewModel(
     private val noteId: Long,
@@ -112,7 +114,14 @@ class EditorViewModel(
     suspend fun flushPendingSave() {
         saveJob?.cancel()
         saveJob = null
-        save()
+        // NonCancellable so the save completes even when the caller (e.g. a
+        // disposed UI coroutine during rotation) is being cancelled mid-flight.
+        withContext(NonCancellable) { save() }
+    }
+
+    /** Fire-and-forget flush safe to call from DisposableEffect.onDispose.  */
+    fun requestFlush() {
+        viewModelScope.launch { flushPendingSave() }
     }
 
     private fun scheduleSave() {

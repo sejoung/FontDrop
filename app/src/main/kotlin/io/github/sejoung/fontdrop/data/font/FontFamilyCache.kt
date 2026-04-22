@@ -34,12 +34,20 @@ class FontFamilyCache(
     }
 
     override suspend fun prewarm(assets: Collection<FontAsset>) {
-        assets.forEach { runCatching { familyFor(it) } }
+        // Cap to avoid pegging disk/IO on folders with hundreds of fonts. Any
+        // asset beyond the cap still loads on-demand via ensureLoaded / familyFor.
+        assets.asSequence().take(PREWARM_CAP).forEach {
+            runCatching { familyFor(it) }
+        }
     }
 
     fun invalidate() {
         cache.clear()
         locks.clear()
         materializer.invalidate()
+    }
+
+    companion object {
+        const val PREWARM_CAP: Int = 50
     }
 }

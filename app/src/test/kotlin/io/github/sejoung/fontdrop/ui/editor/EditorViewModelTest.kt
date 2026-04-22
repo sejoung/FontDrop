@@ -196,8 +196,7 @@ class EditorViewModelTest {
 
         assertEquals(listOf("inter"), prewarmer.ensured)
         assertEquals(listOf(listOf("inter", "roboto")), prewarmer.prewarmed)
-        // keep referenced to avoid unused-var warning
-        @Suppress("UNUSED_VARIABLE") val unused = vm
+        assertEquals(1L, vm.uiState.value.availableFonts.count { it.id == "inter" }.toLong())
     }
 
     @Test
@@ -219,6 +218,26 @@ class EditorViewModelTest {
         advanceUntilIdle()
 
         assertEquals(listOf("inter"), prewarmer.ensured)
+    }
+
+    @Test
+    fun `requestFlush persists latest draft via viewModelScope without a caller coroutine`() = runTest {
+        val notes = FakeNoteRepository(listOf(Note(id = 1, title = "")))
+        val vm = EditorViewModel(
+            noteId = 1,
+            noteRepository = notes,
+            fontRepository = FakeFontFolderRepository(),
+            prewarmer = FakeFontPrewarmer(),
+            clock = FakeClock(0L),
+            autoSaveDelayMs = 5_000L,
+        )
+        advanceUntilIdle()
+
+        vm.onTitleChange("from-dispose")
+        vm.requestFlush()
+        advanceUntilIdle()
+
+        assertEquals("from-dispose", notes.noteById(1)?.title)
     }
 
     @Test

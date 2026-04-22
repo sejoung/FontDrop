@@ -92,6 +92,20 @@ class FontFamilyCacheTest {
     }
 
     @Test
+    fun `prewarm caps the number of assets it eagerly loads`() = runTest {
+        val total = FontFamilyCache.PREWARM_CAP + 5
+        val assets = (0 until total).map { asset("asset-$it") }
+        assets.forEach { reader.put(it.uriString, byteArrayOf(1)) }
+        val cache = buildCache()
+
+        cache.prewarm(assets)
+
+        assertEquals(FontFamilyCache.PREWARM_CAP, factoryCalls)
+        assertNotNull(cache.cachedOrNull("asset-0"))
+        assertNull(cache.cachedOrNull("asset-${total - 1}"))
+    }
+
+    @Test
     fun `invalidate clears cache and materializer reloads from source`() = runTest {
         reader.put("content://a", byteArrayOf(1))
         val cache = buildCache()

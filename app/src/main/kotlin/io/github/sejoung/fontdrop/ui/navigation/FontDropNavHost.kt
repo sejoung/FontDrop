@@ -7,6 +7,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -35,7 +36,8 @@ fun FontDropNavHost(
                     currentRoute = currentRoute,
                     onNavigate = { dest ->
                         navController.navigate(dest.route) {
-                            popUpTo(FontDropDestination.Notes.route) { saveState = true }
+                            val start = navController.graph.findStartDestination().id
+                            popUpTo(start) { saveState = true }
                             launchSingleTop = true
                             restoreState = true
                         }

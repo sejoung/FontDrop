@@ -21,6 +21,7 @@ import io.github.sejoung.fontdrop.ui.components.FontPreviewCard
 import io.github.sejoung.fontdrop.ui.library.rememberFontFamily
 import io.github.sejoung.fontdrop.ui.theme.FontDropPalette
 import io.github.sejoung.fontdrop.ui.theme.FontDropTheme
+import io.github.sejoung.fontdrop.ui.util.FONT_PREVIEW_SENTENCE
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,7 +67,7 @@ fun FontPickerSheet(
                         FontPreviewCard(
                             fontName = "System default",
                             styleLabel = "Neutral sans",
-                            previewText = "The quiet art of letters.",
+                            previewText = FONT_PREVIEW_SENTENCE,
                             previewFontFamily = FontFamily.Default,
                             selected = selectedFontId == null,
                             onClick = { onSelect(null) },
@@ -77,7 +78,7 @@ fun FontPickerSheet(
                         FontPreviewCard(
                             fontName = font.familyName,
                             styleLabel = ".${font.extension}",
-                            previewText = "The quiet art of letters.",
+                            previewText = FONT_PREVIEW_SENTENCE,
                             previewFontFamily = family ?: FontFamily.Default,
                             isLoading = family == null,
                             selected = font.id == selectedFontId,
