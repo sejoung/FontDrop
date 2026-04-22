@@ -2,23 +2,26 @@ package io.github.sejoung.fontdrop.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.background
 import io.github.sejoung.fontdrop.ui.theme.FontDropPalette
 import io.github.sejoung.fontdrop.ui.theme.FontDropTheme
 
@@ -29,25 +32,34 @@ fun FontPreviewCard(
     previewText: String,
     modifier: Modifier = Modifier,
     previewFontFamily: FontFamily = FontFamily.Serif,
+    isLoading: Boolean = false,
+    selected: Boolean = false,
     onClick: () -> Unit = {},
 ) {
+    val border = if (selected) {
+        BorderStroke(2.dp, FontDropPalette.Ink700)
+    } else {
+        BorderStroke(1.dp, FontDropPalette.BorderSoft)
+    }
+    val container = if (selected) FontDropPalette.BackgroundElevated else Color.White
+
     Card(
         modifier = modifier.fillMaxWidth(),
         onClick = onClick,
         shape = RoundedCornerShape(FontDropTheme.radius.l),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White,
+            containerColor = container,
             contentColor = FontDropPalette.TextPrimary,
         ),
-        border = BorderStroke(1.dp, FontDropPalette.BorderSoft),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = border,
+        elevation = CardDefaults.cardElevation(defaultElevation = if (selected) 4.dp else 2.dp),
     ) {
         Column(
             modifier = Modifier.padding(
                 horizontal = FontDropTheme.spacing.m,
                 vertical = FontDropTheme.spacing.l,
             ),
-            verticalArrangement = Arrangement.spacedBy(FontDropTheme.spacing.s),
+            verticalArrangement = Arrangement.spacedBy(FontDropTheme.spacing.sm),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
@@ -62,17 +74,37 @@ fun FontPreviewCard(
                         color = FontDropPalette.TextTertiary,
                     )
                 }
-                Icon(
-                    imageVector = Icons.Rounded.ChevronRight,
-                    contentDescription = null,
-                    tint = FontDropPalette.TextSecondary,
+                if (selected) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(FontDropPalette.Gold500),
+                    )
+                }
+            }
+            if (isLoading) {
+                Text(
+                    text = "Loading preview…",
+                    style = FontDropTheme.type.bodyM,
+                    color = FontDropPalette.TextTertiary,
+                )
+            } else {
+                Text(
+                    text = "Aa",
+                    style = FontDropTheme.type.displayL.copy(
+                        fontFamily = previewFontFamily,
+                        fontSize = 56.sp,
+                        lineHeight = 64.sp,
+                    ),
+                    color = FontDropPalette.TextPrimary,
+                )
+                Text(
+                    text = previewText,
+                    style = FontDropTheme.type.bodyL.copy(fontFamily = previewFontFamily),
+                    color = FontDropPalette.TextSecondary,
                 )
             }
-            Text(
-                text = previewText,
-                style = FontDropTheme.type.displayS.copy(fontFamily = previewFontFamily),
-                color = FontDropPalette.TextPrimary,
-            )
         }
     }
 }

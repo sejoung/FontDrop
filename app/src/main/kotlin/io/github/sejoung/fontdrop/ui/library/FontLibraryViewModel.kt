@@ -1,0 +1,92 @@
+package io.github.sejoung.fontdrop.ui.library
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import io.github.sejoung.fontdrop.data.font.FontAsset
+import io.github.sejoung.fontdrop.data.font.FontFolderRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+class FontLibraryViewModel(
+    private val repository: FontFolderRepository,
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(FontLibraryUiState())
+    val uiState: StateFlow<FontLibraryUiState> = _uiState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            val uri = repository.selectedFolderUri.first()
+            _uiState.update { it.copy(hasSelectedFolder = uri != null, folderUri = uri) }
+            if (uri != null) refresh()
+        }
+    }
+
+    fun onFolderSelected(uriString: String) {
+        viewModelScope.launch {
+            repository.setSelectedFolder(uriString)
+            _uiState.update {
+                it.copy(
+                    hasSelectedFolder = true,
+                    folderUri = uriString,
+                    selectedFontId = null,
+                    errorMessage = null,
+                )
+            }
+            refresh()
+        }
+    }
+
+    fun onRefresh() {
+        viewModelScope.launch { refresh() }
+    }
+
+    fun onFontTapped(asset: FontAsset) {
+        _uiState.update { current ->
+            val next = if (current.selectedFontId == asset.id) null else asset.id
+            current.copy(selectedFontId = next)
+        }
+    }
+
+    fun onClearFolder() {
+        viewModelScope.launch {
+            repository.clearSelectedFolder()
+            _uiState.update { FontLibraryUiState() }
+        }
+    }
+
+    private suspend fun refresh() {
+        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+        val result = runCatching { repository.scan() }
+        _uiState.update { current ->
+            result.fold(
+                onSuccess = { fonts ->
+                    val selectionSurvives = fonts.any { it.id == current.selectedFontId }
+                    current.copy(
+                        isLoading = false,
+                        fonts = fonts,
+                        selectedFontId = current.selectedFontId.takeIf { selectionSurvives },
+                    )
+                },
+                onFailure = { throwable ->
+                    current.copy(
+                        isLoading = false,
+                        errorMessage = throwable.message ?: "Failed to scan fonts folder",
+                    )
+                },
+            )
+        }
+    }
+
+    companion object {
+        fun factory(repository: FontFolderRepository) = viewModelFactory {
+            initializer { FontLibraryViewModel(repository) }
+        }
+    }
+}
