@@ -1,12 +1,15 @@
 package io.github.sejoung.fontdrop.ui.editor
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
@@ -27,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import io.github.sejoung.fontdrop.ui.theme.FontDropPalette
 import io.github.sejoung.fontdrop.ui.theme.FontDropTheme
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun EditorToolbar(
     fontLabel: String,
@@ -43,7 +47,7 @@ fun EditorToolbar(
         color = FontDropPalette.BackgroundElevated,
         tonalElevation = 0.dp,
     ) {
-        Row(
+        FlowRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(
@@ -51,13 +55,15 @@ fun EditorToolbar(
                     vertical = FontDropTheme.spacing.s,
                 ),
             horizontalArrangement = Arrangement.spacedBy(FontDropTheme.spacing.s),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(FontDropTheme.spacing.s),
         ) {
             FontChip(
                 label = fontLabel,
                 fontFamily = fontFamily,
                 onClick = onOpenFontPicker,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f, fill = true)
+                    .widthIn(min = 140.dp),
             )
             SizeStepper(
                 valueLabel = "${fontSizeSp}sp",

@@ -3,6 +3,7 @@ package io.github.sejoung.fontdrop.ui.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -90,19 +91,34 @@ fun FontPreviewCard(
                     color = FontDropPalette.TextTertiary,
                 )
             } else {
-                Text(
-                    text = "Aa",
-                    style = FontDropTheme.type.displayL.copy(
-                        fontFamily = previewFontFamily,
-                        fontSize = 56.sp,
-                        lineHeight = 64.sp,
-                    ),
-                    color = FontDropPalette.TextPrimary,
-                )
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                    val previewFontSize = when {
+                        maxWidth < 280.dp -> 40.sp
+                        maxWidth < 360.dp -> 48.sp
+                        else -> 56.sp
+                    }
+                    val previewLineHeight = when {
+                        maxWidth < 280.dp -> 48.sp
+                        maxWidth < 360.dp -> 56.sp
+                        else -> 64.sp
+                    }
+                    Text(
+                        text = "Aa",
+                        style = FontDropTheme.type.displayL.copy(
+                            fontFamily = previewFontFamily,
+                            fontSize = previewFontSize,
+                            lineHeight = previewLineHeight,
+                        ),
+                        color = FontDropPalette.TextPrimary,
+                        maxLines = 1,
+                    )
+                }
                 Text(
                     text = previewText,
                     style = FontDropTheme.type.bodyL.copy(fontFamily = previewFontFamily),
                     color = FontDropPalette.TextSecondary,
+                    maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
             }
         }
